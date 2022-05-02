@@ -43,4 +43,14 @@ def find_locals(array, tipo):
         #argrelextrema(x, np.less)
         result = new_array[argrelextrema(new_array, np.less)[0]]
     return list(result)
+
+# Return the entropy of a image
+def entropy(im):
+    # Compute normalized histogram -> p(g)
+    p = np.array([(im==v).sum() for v in range(256)])
+    p = p/p.sum()
+    # Compute e = -sum(p(g)*log2(p(g)))
+    e = -(p[p>0]*np.log2(p[p>0])).sum()
+    
+    return e
    
