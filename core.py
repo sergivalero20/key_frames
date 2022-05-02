@@ -1,34 +1,53 @@
 #!/usr/bin/python3
 import cv2
-from functions import extract, find_locals, entropy
 import matplotlib.pyplot as plt
+from functions import (
+    entropy, 
+    extract, 
+    find_locals, 
+    FRAMES_LOCATION, 
+    IMG_EXT
+)
 #from skimage.filters.rank import entropy
-from skimage.io import imread, imshow
 from matplotlib.pyplot import imread
-from skimage.morphology import disk
+#from skimage.io import imread
+#from skimage.morphology import disk
 
 
 """
-    Una vez tengamos los frames del video debemos
-    1. Recorrer cada uno y calcular su entropia
-    2 Guardar los valores de la entropía en una lista
-    3. Pasar a la función find_locals la lista para encontrar máximos y mínimos locales
-    4. Guardar 
+    When we have video frames then we could follow the next steps:
+    1. Calculate image entropy of each frame
+    2  Append image entropy values in a list
+    3. Find local peaks
+    4. Save 
 """
 
 # Now let us import the image we will be working with.
 
-#shawls = imread('/home/javargas/Escritorio/images/Frame1.jpg', as_gray=True)
+entropy_list = []
+frames_list = []
+
+for i in range(0, 5):
+    # We get the image
+    img = cv2.imread(f'{FRAMES_LOCATION}Frame{i}{IMG_EXT}')
+    # Convert the image color to gray scales
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    #entropy_image = entropy(img, disk(5))
+    frames_list.append(i+1)
+    entropy_list.append(entropy(img))     
+
 #plt.figure(num=None, figsize=(8,62))
-#imshow(shawls);
-# We get the image
-img = cv2.imread('/home/javargas/Escritorio/images/Frame1.jpg')
-# Convert the image color to gray scales
-img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-#entropy_image = entropy(img, disk(5))
-print(entropy(img))
+plt.figure("Representation Of The Video")
+plt.plot(frames_list,entropy_list, "o")
+plt.xlabel('Frames')
+plt.ylabel('Entropy')
+plt.title('Frames with its entropy values')
+plt.xticks(frames_list)
 
+#print(entropy_list)
+max_peaks = (find_locals(entropy_list, "maxima"))
+min_peaks = (find_locals(entropy_list, "minima"))
+plt.legend(['Entropy value'], loc='lower right')
+plt.grid()
+plt.show()
 
-#plt.show()
-#print((find_locals([1,4,2,6,5,8,7], "maxima")))
-#print((find_locals([1,4,2,6,5,8,7], "minima")))
