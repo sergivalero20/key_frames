@@ -5,6 +5,7 @@ from scipy.signal import argrelextrema
 #from imageio import imread, imshow
 from skimage import data
 
+
 # Constants related to the video
 VIDEO_PATH = '/home/javargas/2022-04-06 10-29-48.mkv'
 FRAMES_LOCATION = '/home/javargas/Escritorio/images/'
@@ -19,11 +20,11 @@ def extract(video_path=VIDEO_PATH):
     cap = cv2.VideoCapture(video_path)
 
     # Calculate the number of frames
-    length = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    numbers_of_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     print("Extracting frames from video...")
 
     # Iterate on each frame
-    for i in range(0, length):
+    for i in range(0, numbers_of_frames):
         ret, frame = cap.read()
         
         # This condition prevents from infinite looping
@@ -33,8 +34,8 @@ def extract(video_path=VIDEO_PATH):
         
         # Save Frame by Frame into a specific path using imwrite method
         cv2.imwrite(FRAMES_LOCATION+'Frame'+str(i)+IMG_EXT, frame)
-        i += 1
-    return length
+        
+    return numbers_of_frames
 
 def find_locals(array, tipo):
     """
@@ -71,21 +72,19 @@ def find_locals_2(array):
     Function that find minimum and maximum local peaks. It returns a list that
     contain the different values.
     """
-    iframes_entropy = {}
-    for i in range(0, len(array)):
-        iframes_entropy[i+1] = array[i]
+    frame_entropy = dict(zip(list(range(1, len(array)+1)), array))
 
     new_array = np.array(array)    
    
     local_max = new_array[argrelextrema(new_array, np.greater)[0]]
     local_min = new_array[argrelextrema(new_array, np.less)[0]]
-    local = list(local_max) + list(local_min)
+    Pext = list(local_max) + list(local_min)
 
     frames = []
     entropies = []
 
-    for k, v in iframes_entropy.items():
-        if v in local:
+    for k, v in frame_entropy.items():
+        if v in Pext:
             frames.append(k)
             entropies.append(v)
 

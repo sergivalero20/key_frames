@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 import cv2
 import matplotlib.pyplot as plt
+import numpy as np
 from functions import (
     entropy, 
     extract, 
@@ -9,8 +10,9 @@ from functions import (
     FRAMES_LOCATION, 
     IMG_EXT
 )
+from sklearn.cluster import DBSCAN
 #from skimage.filters.rank import entropy
-from matplotlib.pyplot import imread
+#from matplotlib.pyplot import imread
 #from skimage.io import imread
 #from skimage.morphology import disk
 
@@ -56,8 +58,7 @@ x_frames, y_peaks = find_locals_2(entropy_list)
 #plt.grid()
 #plt.show()
 
-#y_peaks = [7.3917606280401, 6.906465432774153, 7.477986020541781]
-#x_frames = [5,6,7]
+
 
 fig, axs = plt.subplots(1, 2)
 axs[0].plot(frames_list, entropy_list, '--go', label='line with marker')
@@ -77,4 +78,11 @@ for ax in axs.flat:
 for ax in axs.flat:
     ax.label_outer()
 
+
+x = np.array([x_frames, y_peaks])
+
+# Cluster identify
+#clusters = DBSCAN(eps=2, min_samples=2).fit(x)
+#labels = clusters.labels_
+clusters = DBSCAN(eps=2, min_samples=2).fit_predict(x)
 plt.show()
