@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import argrelextrema
 #from imageio import imread, imshow
-from skimage import data
+#from skimage import data
 
 
 # Constants related to the video
