@@ -1,36 +1,49 @@
 import cv2
-import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 import math
+import numpy as np
+import pandas as pd
+import shutil
+import os
+
 from scipy.signal import argrelextrema
-#from imageio import imread, imshow
-#from skimage import data
 from sklearn.cluster import DBSCAN
 from sklearn.neighbors import NearestNeighbors
 
 
 # Constants related to the video
-VIDEO_PATH = '/home/sergio/Documents/tesis/key_frames/datasets/HandGesture/1/video1.avi'
+#VIDEO_PATH = '/home/sergio/Documents/tesis/key_frames/datasets/HandGesture/1/video1.avi'
 FRAMES_LOCATION = '/home/sergio/Documents/tesis/images/'
+KEY_FRAMES_LOC = '/home/sergio/Documents/tesis/final_result/'
 IMG_EXT = '.jpg'
 
-def get_entropy(n_frames:int=9)->list:
+def get_directory(video_path:str)->str:
+    
+    if '/' in video_path:        
+        dir = video_path.split('/')
+        dir = list(filter(lambda x: x!='', dir))
+        dir = '/'+'/'.join(dir[:-2])
+        return dir
+    return None
+
+def get_entropy(n_frames:int, video_path:str)->list:
     
     """Returns a list that contain entropy values 
 
     Args:
         n_frames (int): An integer that represent the number of frames
+        video_path (str): A string that represent the absolute path of the video
 
     Returns:
         list: A list that contain entropy values for each frame
     """
 
+    frames_dir = os.path.join(video_path, 'Frames')
     entropy_list = []
     
     for i in range(1, n_frames + 1):
         # We get the image
-        img = cv2.imread(f'{FRAMES_LOCATION}Frame{i}{IMG_EXT}')
+        img = cv2.imread(f'{frames_dir}/Frame{i}{IMG_EXT}')
         # Convert the image color to gray scales
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         #entropy_image = entropy(img, disk(5))
@@ -38,15 +51,15 @@ def get_entropy(n_frames:int=9)->list:
     
     return entropy_list
 
-def extract(video_path:str=VIDEO_PATH)->int:
+def extract(video_path:str)->int:
     
     """Returns the total numbers of frames 
 
     Args:
-        video_path (str): An integer that represent the absolute path of the video
+        video_path (str): A string that represent the absolute path of the video
 
     Returns:
-        int: A integer that represent the total of frames of the video
+        int: Integer that represent the total of frames of the video
     """
     # Cacth the video
     cap = cv2.VideoCapture(video_path)
@@ -54,7 +67,8 @@ def extract(video_path:str=VIDEO_PATH)->int:
     # Calculate the number of frames
     numbers_of_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     print("Extracting frames from video...")
-
+    frames_dir = os.path.join(get_directory(video_path), 'Frames')
+    os.mkdir(frames_dir)
     # Iterate on each frame
     for i in range(1, numbers_of_frames + 1):
         ret, frame = cap.read()
@@ -65,7 +79,7 @@ def extract(video_path:str=VIDEO_PATH)->int:
             break
         
         # Save Frame by Frame into a specific path using imwrite method
-        cv2.imwrite(FRAMES_LOCATION+'Frame'+str(i)+IMG_EXT, frame)
+        cv2.imwrite(frames_dir+'/Frame'+str(i)+IMG_EXT, frame)
         
     return numbers_of_frames
 
@@ -138,7 +152,16 @@ def list_to_df(frames:list, entropy:list):
     df = pd.DataFrame(frames_entropy, columns=('Frame', 'Entropy'))
     return df
 
-def estimate_values(df:pd.core.frame.DataFrame):
+def estimate_value(df:pd.core.frame.DataFrame)->float:
+    
+    """Returns a list
+
+    Args:
+        df (DataFrame): A DataFrame that represents all the points
+
+    Returns:
+        float: A float that represents epsilon value for the algorithm 
+    """
     
     # creating an object of the NearestNeighbors class
     neighb = NearestNeighbors(n_neighbors=2)
@@ -152,6 +175,8 @@ def estimate_values(df:pd.core.frame.DataFrame):
     # Sort and plot the distances results
     distances = np.sort(distances, axis = 0)
     distances = distances[:, 1]
+    # max_slope = min([x - z for x, z in zip(distances[:-1], distances[1:])])
+    # print(f"MAx slope {max_slope}")
     # plt.rcParams['figure.figsize'] = (5,3)
     # plt.plot(distances)
     # plt.show()
@@ -289,3 +314,24 @@ def find_key_frames(df, clusters:list)->list:
         key_frames.append(df.Frame[get_den_point(points, df)])
         
     return sorted(key_frames)
+
+def move_key_frames(key_frames:list, video_path:str)->str:
+
+    """Returns the path of the key frames
+
+    Args: 
+        key_frames (list): A list that contains all the key frames
+        video_path (str): A string that represent the absolute path of the video 
+
+    Returns:
+        str: A string that represents the path of the key frames
+    """
+    key_frames_dir = os.path.join(video_path, 'Key_Frames')
+    os.mkdir(key_frames_dir)
+    frames_dir = os.path.join(video_path, 'Frames')
+    
+    for key_frame in key_frames:
+        src_path = f'{frames_dir}/Frame{key_frame}{IMG_EXT}'
+        dst_path = f'{key_frames_dir}/Frame{key_frame}{IMG_EXT}'
+        shutil.move(src_path, dst_path)
+    return key_frames_dir
