@@ -152,6 +152,38 @@ def list_to_df(frames:list, entropy:list):
     df = pd.DataFrame(frames_entropy, columns=('Frame', 'Entropy'))
     return df
 
+def get_max_curvature(distances:list)->float:
+    
+    """Returns a float
+
+    Args:
+        distances (list): A list that contains the average distance between each point in the data set
+
+    Returns:
+        float: A float that represents epsilon value for the algorithm 
+    """
+    
+    step = 2
+    result = []
+    
+    for index, value in enumerate(distances):
+        count, acc = 0.0, 0.0
+        for step1 in range(1,step+1):
+            if index-step1>0:
+                temp_v = distances[index-step1]
+                count += 1
+                acc += abs(distances[index] - temp_v)
+        for step1 in range(1,step+1):
+            if index+step1<len(distances):
+                temp_v = distances[index+step1]
+                count+=1
+                acc += abs(distances[index] - temp_v)
+        result.append(acc/count)
+    idx = result.index(max(result))
+    eps = distances[idx]
+    print(f"This is the value of eps: {eps}")
+    return eps
+
 def estimate_value(df:pd.core.frame.DataFrame)->float:
     
     """Returns a list
@@ -172,16 +204,16 @@ def estimate_value(df:pd.core.frame.DataFrame)->float:
     # finding the nearest neighbours
     distances,indices=nbrs.kneighbors(df)
     
-    # Sort and plot the distances results
+    # Sort the distances results
     distances = np.sort(distances, axis = 0)
-    distances = distances[:, 1]
-    # max_slope = min([x - z for x, z in zip(distances[:-1], distances[1:])])
-    # print(f"MAx slope {max_slope}")
-    # plt.rcParams['figure.figsize'] = (5,3)
-    # plt.plot(distances)
-    # plt.show()
+    distances = distances[:, 1]    
+    eps = get_max_curvature(distances)
     
-    return 4
+    plt.rcParams['figure.figsize'] = (5,3)
+    plt.plot(distances)
+    plt.show()
+    
+    return eps
     
    
 def first_plot(frames_list:list, entropy_list:list):
@@ -267,7 +299,7 @@ def divide_clusters(clusters:list)->dict:
                 clusters_points[label].append(i)
             else:
                 clusters_points[label] = [i]
-    
+    print(f"This are the clusters found it: {clusters_points}")
     return clusters_points   
 
 def get_den_point(positions:list, df)->int:
