@@ -8,25 +8,66 @@ import os
 
 from scipy.signal import argrelextrema
 from sklearn.cluster import DBSCAN
+from sklearn import metrics
 from sklearn.neighbors import NearestNeighbors
 
 
-# Constants related to the video
-#VIDEO_PATH = '/home/sergio/Documents/tesis/key_frames/datasets/HandGesture/1/video1.avi'
-FRAMES_LOCATION = '/home/sergio/Documents/tesis/images/'
-KEY_FRAMES_LOC = '/home/sergio/Documents/tesis/final_result/'
+# Extension for the frames
 IMG_EXT = '.jpg'
 
-def get_directory(video_path:str)->str:
+def plot_data(x:list, y:list, x_label, y_label, title, x_ticks=False, y_ticks=False) -> None:
+    
+    plt.figure("Figure")    
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+    plt.title(title)
+    if x_ticks and y_ticks:
+       plt.xticks(x)
+       plt.yticks(y) 
+       plt.scatter(x, y, marker='*')
+    else:
+        plt.scatter(x, y, marker='o')
+    plt.show()    
+    return 
+
+def get_directory(video_path:str) -> str:
+    
+    """Path of the video 
+
+    Args:
+        video_path (str): A string that represent the absolute path of the video
+
+    Returns:
+        str: The absolute path of the video file
+    """
     
     if '/' in video_path:        
         dir = video_path.split('/')
         dir = list(filter(lambda x: x!='', dir))
-        dir = '/'+'/'.join(dir[:-2])
+        dir = '/'+'/'.join(dir[:-1])
         return dir
+    return ''
+
+def delete_directory(path:str) -> None:
+    
+    """Remove folder from previous analizes 
+
+    Args:
+        video_path (str): A string that represent the absolute path of the video
+
+    Returns:
+        None
+    """
+    folders = tuple(filter(lambda d: d in ('Key_Frames', 'Frames'), os.listdir(path)))
+    for folder in folders:
+        p = os.path.join(path, folder)
+        try:
+            shutil.rmtree(p)
+        except:
+            pass
     return None
 
-def get_entropy(n_frames:int, video_path:str)->list:
+def get_entropy(n_frames:int, video_path:str) -> list:
     
     """Returns a list that contain entropy values 
 
@@ -41,17 +82,26 @@ def get_entropy(n_frames:int, video_path:str)->list:
     frames_dir = os.path.join(video_path, 'Frames')
     entropy_list = []
     
-    for i in range(1, n_frames + 1):
-        # We get the image
-        img = cv2.imread(f'{frames_dir}/Frame{i}{IMG_EXT}')
-        # Convert the image color to gray scales
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        #entropy_image = entropy(img, disk(5))
-        entropy_list.append(entropy(img)) 
-    
+    if n_frames is not None:    
+        for i in range(1, n_frames + 1):
+            # We get the image
+            img = cv2.imread(f'{frames_dir}/Frame{i}{IMG_EXT}')
+            # Convert the image color to gray scales
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            #entropy_image = entropy(img, disk(5))
+            entropy_list.append(entropy(img))     
+    else:
+        dir_images = sorted(os.listdir(video_path))
+        for i in dir_images:
+            # We get the image
+            img = cv2.imread(os.path.join(video_path, i))
+            # Convert the image color to gray scales
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            #entropy_image = entropy(img, disk(5))
+            entropy_list.append(entropy(img)) 
     return entropy_list
 
-def extract(video_path:str)->int:
+def extract(video_path:str) -> int:
     
     """Returns the total numbers of frames 
 
@@ -84,7 +134,7 @@ def extract(video_path:str)->int:
     return numbers_of_frames
 
 # Return the entropy of a image
-def entropy(im:cv2.cvtColor)->float:
+def entropy(im:cv2.cvtColor) -> float:
     
     """Returns the entropy of an image 
 
@@ -102,7 +152,7 @@ def entropy(im:cv2.cvtColor)->float:
     
     return e
 
-def find_locals(entropy_values:list):
+def find_locals(entropy_values:list) -> tuple:
     
     """Compute the minimum and maximum locals points 
 
@@ -112,8 +162,6 @@ def find_locals(entropy_values:list):
     Returns:
         A Tuple: it returns a tuple that contain frames and entropy values lists
     """
-    
-    #frame_entropy = dict(zip(list(range(1, len(entropy_values)+1)), entropy_values))
     frame_entropy = {i+1:v for i, v in enumerate(entropy_values)}
 
     new_array = np.array(entropy_values)    
@@ -129,7 +177,6 @@ def find_locals(entropy_values:list):
         if v in Pext:
             frames.append(k)
             entropies.append(v)
-
     return (frames, entropies)
 
 def list_to_df(frames:list, entropy:list):
@@ -152,7 +199,7 @@ def list_to_df(frames:list, entropy:list):
     df = pd.DataFrame(frames_entropy, columns=('Frame', 'Entropy'))
     return df
 
-def get_max_curvature(distances:list)->float:
+def get_max_curvature(distances:list) -> float:
     
     """Returns a float
 
@@ -184,7 +231,7 @@ def get_max_curvature(distances:list)->float:
     print(f"This is the value of eps: {eps}")
     return eps
 
-def estimate_value(df:pd.core.frame.DataFrame)->float:
+def estimate_value(df:pd.core.frame.DataFrame) -> float:
     
     """Returns a list
 
@@ -199,61 +246,35 @@ def estimate_value(df:pd.core.frame.DataFrame)->float:
     neighb = NearestNeighbors(n_neighbors=2)
     
     # fitting the data to the object
-    nbrs=neighb.fit(df)
+    nbrs = neighb.fit(df)
     
     # finding the nearest neighbours
-    distances,indices=nbrs.kneighbors(df)
+    distances,indices = nbrs.kneighbors(df)
     
     # Sort the distances results
     distances = np.sort(distances, axis = 0)
     distances = distances[:, 1]    
     eps = get_max_curvature(distances)
     
-    plt.rcParams['figure.figsize'] = (5,3)
-    plt.plot(distances)
-    plt.show()
+    # plt.rcParams['figure.figsize'] = (5,3)
+    # plt.plot(distances)
+    # plt.xlabel('Frames')
+    # plt.ylabel('Distancia promedio')
+    # plt.title('Resultado de aplicar el algoritmo NearestNeighbors')
+    # plt.show()
     
     return eps
+
+def plot_clusters(df, labels) -> None:
     
-   
-def first_plot(frames_list:list, entropy_list:list):
-    
-    plt.figure("Representation Of The Video")
-    plt.plot(frames_list, entropy_list, linestyle='--', marker='o', color='b', label='line with marker')
-    plt.plot(frames_list, entropy_list, '--go', label='line with marker')
-    plt.xlabel('Frame')
-    plt.ylabel('Image Entropy')
-    plt.title('Entropy Calculation')
-    plt.xticks(frames_list)
-    plt.legend(['Entropy value'], loc='lower right')
-    plt.grid()
+    plt.figure("DBSCAN Algorithm")
+    plt.scatter(df.Frame, df.Entropy, c = labels, cmap= "plasma")
+    plt.xlabel("Frames")
+    plt.ylabel("Entropía")
+    plt.title('Resultado del algoritmo DBSCAN')   
     plt.show()
-    
-    return 
-    
-def local_points_plot(frames_list:list, entropy_list:list, x_frames:list, y_peaks:list):
 
-    fig, axs = plt.subplots(1, 2)
-    axs[0].plot(frames_list, entropy_list, '--go', label='line with marker')
-    axs[0].set_xticks(frames_list)
-    axs[0].set_yticks(entropy_list)
-    axs[0].grid()
-    axs[0].set_title('Entropy Calculation')
-    axs[1].plot(x_frames, y_peaks, '--go', label='line with marker')
-    axs[1].set_xticks(x_frames)
-    axs[1].set_yticks(y_peaks)
-    axs[1].grid()
-    axs[1].set_title('Peaks Selection')
-
-    for ax in axs.flat:
-        ax.set(xlabel='Frame', ylabel='Image Entropy')
-
-    for ax in axs.flat:
-        ax.label_outer()
-        
-    return 
-
-def algorithm(df:pd.core.frame.DataFrame, Eps:float, n_points:int=4)->list:
+def algorithm(df:pd.core.frame.DataFrame, Eps:float, n_points:int=4) -> list:
     
     """Returns a list
 
@@ -265,21 +286,15 @@ def algorithm(df:pd.core.frame.DataFrame, Eps:float, n_points:int=4)->list:
     Returns:
         list: A list that containts all the cluster find in the data
     """
-    
+    print(f"This are the parameters for the algorithm: Eps->{Eps}, n_points->{n_points}")
     dbscan = DBSCAN(eps = Eps, min_samples = n_points).fit(df)
     labels = dbscan.labels_
+    #plot_clusters(df, labels)
+    #accu = metrics.silhouette_score(df, labels)
+    #print(f"This is the acurration {accu}")
     return labels
-    plt.figure("DBSCAN Algorithm")
-    plt.scatter(df.Frame, df.Entropy, c = labels, cmap= "plasma")
-    plt.xlabel("Frame")
-    plt.ylabel("Entropy")
-    plt.xticks(list(range(1,239+1)))
-    plt.tick_params(axis='x', which='minor', labelsize='small', labelcolor='m', rotation=30)
-    #plt.setp(plt.xticks(list(range(1,239+1))), horizontalalignment='right')
     
-    plt.show()
-    
-def divide_clusters(clusters:list)->dict: 
+def divide_clusters(clusters:list) -> dict: 
     
     """Returns a Dict
 
@@ -302,7 +317,7 @@ def divide_clusters(clusters:list)->dict:
     print(f"This are the clusters found it: {clusters_points}")
     return clusters_points   
 
-def get_den_point(positions:list, df)->int:
+def get_den_point(positions:list, df) -> int:
     
     """Returns a list
 
@@ -327,7 +342,18 @@ def get_den_point(positions:list, df)->int:
     densities = sorted(densities, key=lambda d: d[1])
     return densities[0][0]
 
-def find_key_frames(df, clusters:list)->list:
+def plot_key_frames(key_frames:list, df) -> None:
+    
+    y = []
+    
+    for i in key_frames:
+        idx = np.where(df["Frame"]==i)[0][0]
+        y.append(df['Entropy'][idx])   
+        
+    plot_data(key_frames, y, 'Frames', 'Entropía', 'Representación de los Key Frames', True, True)
+    return None
+
+def find_key_frames(df, clusters:list) -> list:
     
     """Returns a list
 
@@ -344,10 +370,12 @@ def find_key_frames(df, clusters:list)->list:
     
     for points in clusters_points.values():
         key_frames.append(df.Frame[get_den_point(points, df)])
-        
+    
+    #plot_key_frames(key_frames, df)  
+    
     return sorted(key_frames)
 
-def move_key_frames(key_frames:list, video_path:str)->str:
+def move_key_frames(key_frames:list, video_path:str) -> str:
 
     """Returns the path of the key frames
 
@@ -358,6 +386,7 @@ def move_key_frames(key_frames:list, video_path:str)->str:
     Returns:
         str: A string that represents the path of the key frames
     """
+    
     key_frames_dir = os.path.join(video_path, 'Key_Frames')
     os.mkdir(key_frames_dir)
     frames_dir = os.path.join(video_path, 'Frames')
